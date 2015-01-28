@@ -88,17 +88,23 @@ sub new {
   $self->preserve_whitespace(1);
   $self->accept_targets(qw( markdown html ));
 
-  my $data = $self->_private;
+
   while( my ($attr, $val) = each %args ){
-    $data->{ $attr } = $val;
+    # Provide a more descriptive message than "Can't locate object method".
+    $self->can($attr) or
+      warn("Unknown argument to ${class}->new(): '$attr'"), next;
+
+    # Call setter.
+    $self->$attr($val);
   }
 
+  # TODO: either don't do rw accessors or put this logic there.
     for my $type ( qw( perldoc man ) ){
         my $attr  = $type . '_url_prefix';
         # Use provided argument or default alias.
         my $url = $self->$attr || $type;
         # Expand alias if defined (otherwise use url as is).
-        $data->{ $attr } = $URL_PREFIXES{ $url } || $url;
+        $self->$attr( $URL_PREFIXES{ $url } || $url );
     }
 
     $self->_prepare_fragment_formats;
@@ -141,12 +147,11 @@ my @attr = qw(
   include_meta_tags
 );
 
-{
-  no strict 'refs'; ## no critic
-  foreach my $attr ( @attr ){
-    *$attr = sub { return $_[0]->_private->{ $attr } };
-  }
-}
+# I prefer ro-accessors (immutability!) but it can be confusing
+# to not support the same API as other Pod::Simple classes.
+
+# NOTE: Pod::Simple::_accessorize is not a documented public API.
+__PACKAGE__->_accessorize(@attr);
 
 sub _prepare_fragment_formats {
   my ($self) = @_;
@@ -186,7 +191,7 @@ sub _prepare_fragment_formats {
       unless $self->can($prefix . $format);
 
     # Save it.
-    $self->_private->{ $attr } = $format;
+    $self->$attr($format);
   }
 
   return;

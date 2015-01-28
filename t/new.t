@@ -59,4 +59,9 @@ test_args
   },
   'Values are interchangeable';
 
+
+# TODO: Change this to an error after a sufficient amount of time.
+like warning { Pod::Markdown->new(unknown_arg => 1); },
+  qr/unknown_arg/, 'unknow arg throws a warning';
+
 done_testing;
