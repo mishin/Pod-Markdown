@@ -2,6 +2,10 @@ Revision history for Perl extension {{$dist->name}}
 
 {{$NEXT}}
 
+  - Add output_encoding attribute to specify the desired encoding
+    to apply to the output handle.
+  - Add match_encoding attribute to the input pod encoding
+    when writing to the output handle.
   - Make accessors read/write (instead of read-only)
     for consistency with Pod::Simple classes.
 

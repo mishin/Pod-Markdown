@@ -114,6 +114,16 @@ sub new {
 
 ## Attribute accessors ##
 
+=method match_encoding
+
+Boolean: If true, use the c<=encoding> of the input pod (if specified)
+as the encoding for the output file.  This overrides L</output_encoding>.
+Defaults to false.
+
+=method output_encoding
+
+The encoding to use when writing to the output file handle.
+
 =method man_url_prefix
 
 Returns the url prefix in use for man pages.
@@ -140,6 +150,8 @@ whether or not meta tags will be printed.
 =cut
 
 my @attr = qw(
+  match_encoding
+  output_encoding
   man_url_prefix
   perldoc_url_prefix
   perldoc_fragment_format
@@ -432,7 +444,20 @@ sub   end_Document {
     unshift @doc, $self->_build_markdown_head, ($/ x 2);
   }
 
+  if( my $encoding = $self->_get_output_encoding ){
+    # This is a no-op on Pod::Simple's tied string.
+    binmode $self->{output_fh}, ":encoding($encoding)";
+  }
+
   print { $self->{output_fh} } @doc;
+}
+
+sub _get_output_encoding {
+  my ($self) = @_;
+  # If configured use the input pod encoding if it was specified.
+  # Otherwise use output_encoding if configured.
+  # Else none.
+  $self->match_encoding && $self->encoding || $self->output_encoding;
 }
 
 ## Blocks ##
