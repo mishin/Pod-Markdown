@@ -17,6 +17,9 @@ our @EXPORT = (
     eq_or_diff
     slurp_file
     warning
+    with_locale
+    with_latin1_locale
+    with_utf8_locale
   ),
   @Test::More::EXPORT
 );
@@ -95,6 +98,24 @@ sub slurp_file {
   slurp_fh($fh)
 }
 sub slurp_fh { my $fh = shift; local $/; <$fh>; }
+
+sub with_locale {
+  my ($locale, $sub) = @_;
+  local %ENV = %ENV;
+  delete $ENV{$_}
+    for ( qw( LANG LANGUAGE ), grep { /^LC_/ } keys %ENV );
+  $ENV{LC_ALL} = $locale;
+  $sub->($locale);
+}
+
+sub with_utf8_locale {
+  with_locale('en_US.UTF-8' => @_);
+}
+
+sub with_latin1_locale {
+  # Is there a more reliable way to set a latin1 locale?
+  with_locale('en_US' => @_);
+}
 
 # Similar interface to Test::Fatal;
 sub warning (&) { ## no critic (Prototypes)

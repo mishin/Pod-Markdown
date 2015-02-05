@@ -6,6 +6,8 @@ Revision history for Perl extension {{$dist->name}}
     to apply to the output handle.
   - Add match_encoding attribute to the input pod encoding
     when writing to the output handle.
+  - Add --encoding and --match-encoding options for pod2markdown script.
+    Use Term::Encoding to set the default for --encoding.
   - Make accessors read/write (instead of read-only)
     for consistency with Pod::Simple classes.
   - Remove documentation for deprecated API

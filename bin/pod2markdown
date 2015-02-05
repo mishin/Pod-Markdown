@@ -6,6 +6,19 @@ use warnings;
 # ABSTRACT: Convert POD text to Markdown
 
 use Pod::Markdown;
+use Term::Encoding ();
+use Getopt::Long;
+use Pod::Usage;
+
+my %opts;
+GetOptions(\%opts, qw(
+  help|h
+  encoding|e=s
+  match_encoding|match-encoding
+)) or pod2usage(2);
+pod2usage(1) if $opts{help};
+
+# TODO: Pod::Simple::parse_from_file(@ARGV[0,1]);
 
 my $in_fh  = get_handle(shift(@ARGV), '<', \*STDIN);
 my $out_fh = get_handle(shift(@ARGV), '>', \*STDOUT);
@@ -14,7 +27,12 @@ convert($in_fh, $out_fh);
 
 sub convert {
     my ($in_file, $out_file) = @_;
+
+    my $enc = $opts{encoding} || Term::Encoding::get_encoding();
+
     my $parser = Pod::Markdown->new;
+    $parser->output_encoding($enc) if $enc;
+    $parser->match_encoding(1) if $opts{match_encoding};
     $parser->output_fh($out_file);
     $parser->parse_file($in_file);
 }
@@ -51,6 +69,20 @@ It accepts two optional arguments:
 =for :list
 * input pod file (defaults to C<STDIN>)
 * output markdown file (defaults to C<STDOUT>)
+
+=head1 OPTIONS
+
+=over
+
+=item --encoding
+
+Specify the encoding for the output file.
+
+=item --match-encoding
+
+Use the same C<=encoding> as the input pod for the output file.
+
+=back
 
 =head1 SEE ALSO
 
