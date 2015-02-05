@@ -9,12 +9,61 @@ package Pod::Markdown;
 use Pod::Simple 3.14 (); # external links with text
 use parent qw(Pod::Simple::Methody);
 
+# HTML::Entities takes a string like a regexp char class.
+# Exclude normal/printable ACSII chars, encode everything else.
+# NOTE: This won't be right on EBCDIC but Pod::Simple may have trouble there too.
+our $NonPrintableAscii = '^\n\r\t\x20-\x7e';
+
 our %URL_PREFIXES = (
   sco      => 'http://search.cpan.org/perldoc?',
   metacpan => 'https://metacpan.org/pod/',
   man      => 'http://man.he.net/man',
 );
 $URL_PREFIXES{perldoc} = $URL_PREFIXES{metacpan};
+
+#{
+  our $HAS_HTML_ENTITIES;
+
+  # Stolen from Pod::Simple::XHTML 3.28. {{{
+
+  BEGIN {
+    $HAS_HTML_ENTITIES = eval "require HTML::Entities; 1";
+  }
+
+  my %entities = (
+    q{>} => 'gt',
+    q{<} => 'lt',
+    q{'} => '#39',
+    q{"} => 'quot',
+    q{&} => 'amp',
+  );
+
+  sub encode_entities {
+    my $self = shift;
+    #y $ents = $self->html_encode_chars; # orig
+    my $ents = @_ > 1 ? $_[1] : $self->html_encode_chars; # change
+    return HTML::Entities::encode_entities( $_[0], $ents ) if $HAS_HTML_ENTITIES;
+    if (defined $ents) {
+        $ents =~ s,(?<!\\)([]/]),\\$1,g;
+        $ents =~ s,(?<!\\)\\\z,\\\\,;
+    } else {
+        $ents = join '', keys %entities;
+    }
+    my $str = $_[0];
+    $str =~ s/([$ents])/'&' . ($entities{$1} || sprintf '#x%X', ord $1) . ';'/ge;
+    return $str;
+  }
+
+  # }}}
+
+  sub _maybe_encode_entities {
+    my ($self, $text) = @_;
+    if( defined $self->html_encode_chars ){
+      $text = $self->encode_entities($text);
+    }
+    return $text;
+  }
+#}
 
 =method new
 
@@ -88,6 +137,10 @@ sub new {
   $self->preserve_whitespace(1);
   $self->accept_targets(qw( markdown html ));
 
+  # TODO: either don't do rw accessors or put this logic there.
+  if( $args{html_encode_chars} && $args{html_encode_chars} eq '1' ){
+    $args{html_encode_chars} = $NonPrintableAscii;
+  }
 
   while( my ($attr, $val) = each %args ){
     # Provide a more descriptive message than "Can't locate object method".
@@ -113,6 +166,11 @@ sub new {
 }
 
 ## Attribute accessors ##
+
+=method html_encode_chars
+
+A string of characters (like a regexp character class) to html encode
+(using L<HTML::Entities/encode_entities>).
 
 =method match_encoding
 
@@ -150,6 +208,7 @@ whether or not meta tags will be printed.
 =cut
 
 my @attr = qw(
+  html_encode_chars
   match_encoding
   output_encoding
   man_url_prefix
@@ -379,6 +438,11 @@ sub _build_markdown_head {
 sub _escape_inline_markdown {
   local $_ = $_[1];
 
+  # Markdown allows inline html so we need to escape things that look like it.
+  # Not all Markdown processors handle backslash-escaped html
+  # so use html entity encoding (daringfireball mentions only the latter).
+  s/([<>&])/&$entities{$1};/g;
+
 # s/([\\`*_{}\[\]()#+-.!])/\\$1/g; # See comments above.
   s/([\\`*_\[\]])/\\$1/g;
 
@@ -409,10 +473,6 @@ sub _escape_paragraph_markdown {
 sub handle_text {
   my ($self, $text) = @_;
 
-  # Markdown is for html, so use html entities.
-  $text =~ s/ /&nbsp;/g
-    if $self->_private->{nbsp};
-
   # Unless we're in a code span or verbatim block.
   unless( $self->_private->{no_escape} ){
 
@@ -425,7 +485,15 @@ sub handle_text {
     # Don't let literal characters be interpreted as markdown.
     $text = $self->_escape_inline_markdown($text);
 
+    # Do this after since escaping may produce html entites.
+    $text = $self->_maybe_encode_entities($text);
+
   }
+
+  # Markdown is for html, so use html entities.
+  # Do this after encoding other html entities to avoid encoding the `&`.
+  $text =~ s/ /&nbsp;/g
+    if $self->_private->{nbsp};
 
   $self->_save($text);
 }
@@ -967,24 +1035,13 @@ Format url fragment like L<Pod::Simple::XHTML/idify>.
   # The strings gets passed through encode_entities() before idify().
   # If we don't do it here the substitutions below won't operate consistently.
 
-  # encode_entities {
-    my %entities = (
-      q{>} => 'gt',
-      q{<} => 'lt',
-      q{'} => '#39',
-      q{"} => 'quot',
-      q{&} => 'amp',
-    );
-
-    my
-      $ents = join '', keys %entities;
-  # }
-
   sub format_fragment_pod_simple_xhtml {
     my ($self, $t) = @_;
 
     # encode_entities {
-      $t =~ s/([$ents])/'&' . ($entities{$1} || sprintf '#x%X', ord $1) . ';'/ge;
+      # We need to use the defaults in case html_encode_chars has been customized
+      # (since the purpose is to match what external sources are doing).
+      $t = $self->encode_entities($t, undef);
     # }
 
     # idify {

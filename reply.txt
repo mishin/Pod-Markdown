@@ -1,0 +1,24 @@
+Pod::Simple expects octets and returns a character string, and it's up to the
+caller how to encode the result.
+
+If you're referring to the bin scripts (pod2man, pod2markdown, etc), that
+explains the confusion.
+
+Pod::Man's pod2man accepts a -u option which will enable utf-8 characters,
+otherwise it tries for maximum compatibility with unknown *roff implementations
+and just outputs an X.
+
+Pod::Text has embedded logic to try to guess the best output encoding if it
+wasn't specified.  It will match the input encoding of the pod (if one was
+specified) or utf-8 if that was specified as an argument.
+
+Pod::Html uses Pod::Simple::XHTML which passes it all through HTML::Entites by
+default (which converts the unicode 0xa9 character into &copy;).
+
+I hadn't noticed that pod2markdown wasn't doing anything with encoding (which is
+silly) so I've added some options.
+You can specify that it should use the same encoding as the input pod (like Pod::Text).
+You can specify the output encoding explicitly.
+If you do neither it will guess the output encoding based on your locale/env vars.
+
+TODO: Alternative would be to encode_entities.

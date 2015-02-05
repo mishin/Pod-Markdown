@@ -1,0 +1,8 @@
+Test how YAML's pod would output by default...
+determine if the suggestion is to utf8::upgrade...
+
+* =pod E<quot>  returns a native  string; upgrade doesn't change it
+* =pod E<copy>  returns a native  string; upgrade converts
+* =pod E<diams> returns a unicode string
+
+Specifying any =encoding will return a unicode string

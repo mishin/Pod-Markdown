@@ -1,0 +1,52 @@
+It gets pretty complex:
+
+Pod::Man: Always encodes both © and E<copy> as “X”.
+Pod::Text - with encoding declared in my POD: Both © and E<copy> are translated correctly.
+Pod::Text - without encoding declared in my POD: Both © and E<copy> are translated as 0xA9.
+Pod::Html always encodes either © or E<copy> correctly as &copy; — even if I don’t set the encoding.
+Pod::Markdown  always encodes either © or E<copy> as 0xA9 whether or not encoding is declared in my POD.
+
+I understand that the whole purpose of Markdown is to be readable even if it isn’t displayed as a formatted document. HTML entities certainly don’t help.
+
+What about this:
+
+Lower ASCII printable characters (0x20 through 0x7E) are always translated correctly
+If I declare an encoding scheme, Pod::Markdown should translate the characters like Pod::Text does.
+If I don’t declare an encoding scheme, and I use E<xxx> in my POD, all characters not in the range 0x20 to 0x7E should be converted into HTML entities. I’ll be happy if this required a command line option.
+
+--
+David Weintraub
+qazwart@gmail.com
+
+perl -e 'print "Just another second rate Perl Hacker\n";'
+
+> On Jan 21, 2015, at 9:32 AM, Randy Stauner via RT <bug-Pod-Markdown@rt.cpan.org> wrote:
+> 
+> <URL: https://rt.cpan.org/Ticket/Display.html?id=101536 >
+> 
+> Pod::Simple transparently decodes E<> sequences into unicode characters.
+> Pod::Html subclasses Pod::Simple::XHTML which passes text sequences through
+> HTML::Entities.
+> By default HTML::Entites encodes: control chars, high bit chars and '<',
+> '&', '>', ''' and '".
+> 
+> I'd be happy to make it an option to pass text sequences through
+> HTML::Entities but I'm not sure what the default should be.
+> I, for one, am perfectly happy encoding the files in utf-8 and embedding
+> the unicode characters.
+> HTML-encoding any printable ascii characters seems excessive in Markdown
+> (it detracts from the simplicity of it).
+> 
+> So in my opinion the best default would be to skip printable ascii and
+> encode other characters: [^\n\r\t\x20-\x7e]
+> 
+> I'd still prefer to make this an opt-in, so I'm considering an option to
+> encode any explicitly specified characters
+> and adding a shortcut that would expand to the above list.
+> 
+> What do you think?
+> 
+> 
+> ...
+> 
+
