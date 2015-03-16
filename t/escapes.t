@@ -17,7 +17,7 @@ sub escape_ok {
 # This was an actual bug report.
 escape_ok
   q{--file=<filename>},
-  q{**--file=&lt;filename&gt;**},
+  q{**--file=&lt;filename>**},
   'command lines args';
 
 # Use real html tags.
@@ -27,7 +27,7 @@ escape_ok
 # That's why we use html entity encoding (more portable).
 escape_ok
   q{h&nbsp;=<hr>},
-  q{**h&amp;nbsp;=&lt;hr&gt;**},
+  q{**h&amp;nbsp;=&lt;hr>**},
   'real html';
 
 done_testing;

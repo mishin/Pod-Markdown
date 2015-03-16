@@ -12,7 +12,8 @@ use parent qw(Pod::Simple::Methody);
 # HTML::Entities takes a string like a regexp char class.
 # Exclude normal/printable ACSII chars, encode everything else.
 # NOTE: This won't be right on EBCDIC but Pod::Simple may have trouble there too.
-our $NonPrintableAscii = '^\n\r\t\x20-\x7e';
+#our $NonPrintableAscii = '^\n\r\t\x20-\x7e';
+our $NonPrintableAscii = '\x00-\x08\x0b\x0c\x0e-\x31<&\x7f-\x{ffff_ffff}';
 
 our %URL_PREFIXES = (
   sco      => 'http://search.cpan.org/perldoc?',
@@ -131,16 +132,24 @@ Default is false.
 
 sub new {
   my $class = shift;
-  my %args = @_;
+  my %args = (
+    # Markdown allows inline html so we need to escape things that look like it.
+    # While _some_ Markdown processors handle backslash-escaped html,
+    # [Daring Fireball](http://daringfireball.net/projects/markdown/syntax) states distinctly:
+    # > In HTML, there are two characters that demand special treatment: < and &...
+    # > If you want to use them as literal characters, you must escape them as entities, e.g. &lt;, and &amp;.
+    #html_encode_chars => '&<',
+    @_
+  );
 
   my $self = $class->SUPER::new();
   $self->preserve_whitespace(1);
   $self->accept_targets(qw( markdown html ));
 
   # TODO: either don't do rw accessors or put this logic there.
-  if( $args{html_encode_chars} && $args{html_encode_chars} eq '1' ){
-    $args{html_encode_chars} = $NonPrintableAscii;
-  }
+  # if( $args{html_encode_chars} && $args{html_encode_chars} eq '1' ){
+  #   $args{html_encode_chars} = $NonPrintableAscii;
+  # }
 
   while( my ($attr, $val) = each %args ){
     # Provide a more descriptive message than "Can't locate object method".
@@ -439,9 +448,22 @@ sub _escape_inline_markdown {
   local $_ = $_[1];
 
   # Markdown allows inline html so we need to escape things that look like it.
-  # Not all Markdown processors handle backslash-escaped html
-  # so use html entity encoding (daringfireball mentions only the latter).
-  s/([<>&])/&$entities{$1};/g;
+  # While _some_ Markdown processors handle backslash-escaped html,
+  # [Daring Fireball](http://daringfireball.net/projects/markdown/syntax) states distinctly:
+  # > In HTML, there are two characters that demand special treatment: < and &...
+  # > If you want to use them as literal characters, you must escape them as entities, e.g. &lt;, and &amp;.
+  # {{{
+    # These patterns taken from Markdown.pl 1.0.1 _EncodeAmpsAndAngles()
+    # but inverted so that we only encode the ones that Markdown won't.
+    # This is likely overkill but produces nicer looking text (less escaped
+    # entities).  If it proves insufficent then we'll just encode them all.
+    # {{{
+      # Encode & if succeeded by chars that look like an html entity.
+      s/&(?=#?[xX]?(?:[0-9a-fA-F]+|\w+);)/&amp;/g;
+      # Encode < if succeeded by chars that look like an html tag.
+      s{<(?=[a-z/?\$!])}{&lt;}gi;
+    # }}}
+  # }}}
 
 # s/([\\`*_{}\[\]()#+-.!])/\\$1/g; # See comments above.
   s/([\\`*_\[\]])/\\$1/g;
@@ -491,7 +513,7 @@ sub handle_text {
   }
 
   # Markdown is for html, so use html entities.
-  # Do this after encoding other html entities to avoid encoding the `&`.
+  # Do this after encoding other html entities to avoid double-encoding the `&`.
   $text =~ s/ /&nbsp;/g
     if $self->_private->{nbsp};
 
@@ -878,6 +900,9 @@ sub   end_L {
     $self->_save(sprintf 'L<%s>', $flags->{raw});
     return;
   }
+
+  # TODO: Test if we need to html escape < and &
+  # TODO: Should we pass $url through encode_entities?
 
   # In the url we need to escape quotes and parentheses lest markdown
   # break the url (cut it short and/or wrongfully interpret a title).
