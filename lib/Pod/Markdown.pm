@@ -1151,6 +1151,7 @@ html
 handle_text
 end_.+
 start_.+
+encode_entities
 
 =for test_synopsis
 my ($pod_string);
