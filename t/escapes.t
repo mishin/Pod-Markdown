@@ -8,10 +8,11 @@ use MarkdownTests;
 # Escape things that would be interpreted as inline html.
 
 sub escape_ok {
-  my ($pod, $markdown, $desc) = @_;
+  my ($pod, $markdown, $desc, %opts) = @_;
+  my $verbatim = $opts{verbatim} || $pod;
 
   convert_ok("B<< $pod >>", $markdown,  "$desc: inline html escaped");
-  convert_ok("C<< $pod >>", qq{`$pod`}, "$desc: html not escaped in code span");
+  convert_ok("C<< $pod >>", qq{`$verbatim`}, "$desc: html not escaped in code span");
 }
 
 # This was an actual bug report.
@@ -29,5 +30,15 @@ escape_ok
   q{h&nbsp;=<hr>},
   q{**h&amp;nbsp;=&lt;hr>**},
   'real html';
+
+# Ensure that two pod "strings" still escape the < and & properly.
+# Use S<> since it counts as an event (and therefore creates two separate
+# "handle_text" calls) but does not produce boundary characters (the text
+# inside and around the S<> will have no characters in between in the markdown).
+escape_ok
+  q{the <S<cmp>E<gt> operator and S<&>foobar;},
+  q{**the &lt;cmp> operator and &amp;foobar;**},
+  '< and & are escaped properly even as separate pod strings',
+  verbatim => q{the <cmp> operator and &foobar;};
 
 done_testing;

@@ -457,11 +457,14 @@ sub _escape_inline_markdown {
     # but inverted so that we only encode the ones that Markdown won't.
     # This is likely overkill but produces nicer looking text (less escaped
     # entities).  If it proves insufficent then we'll just encode them all.
+    # Additionally we encode if the character ends the string as its possible
+    # for another pod string to come after it and produce something that should
+    # have been escaped (see t/escapes.t for example).
     # {{{
       # Encode & if succeeded by chars that look like an html entity.
-      s/&(?=#?[xX]?(?:[0-9a-fA-F]+|\w+);)/&amp;/g;
+      s/&(?=#?[xX]?(?:[0-9a-fA-F]+|\w+);|$)/&amp;/g;
       # Encode < if succeeded by chars that look like an html tag.
-      s{<(?=[a-z/?\$!])}{&lt;}gi;
+      s{<(?=[a-z/?\$!]|$)}{&lt;}gi;
     # }}}
   # }}}
 
