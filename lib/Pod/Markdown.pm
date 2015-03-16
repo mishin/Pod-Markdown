@@ -12,8 +12,8 @@ use parent qw(Pod::Simple::Methody);
 # HTML::Entities takes a string like a regexp char class.
 # Exclude normal/printable ACSII chars, encode everything else.
 # NOTE: This won't be right on EBCDIC but Pod::Simple may have trouble there too.
-#our $NonPrintableAscii = '^\n\r\t\x20-\x7e';
-our $NonPrintableAscii = '\x00-\x08\x0b\x0c\x0e-\x31<&\x7f-\x{ffff_ffff}';
+our $NonPrintableAscii = '^\n\r\t\x20-\x7e';
+#our $NonPrintableAscii = '\x00-\x08\x0b\x0c\x0e-\x31<&\x7f-\x{ffff_ffff}';
 
 our %URL_PREFIXES = (
   sco      => 'http://search.cpan.org/perldoc?',
@@ -147,9 +147,9 @@ sub new {
   $self->accept_targets(qw( markdown html ));
 
   # TODO: either don't do rw accessors or put this logic there.
-  # if( $args{html_encode_chars} && $args{html_encode_chars} eq '1' ){
-  #   $args{html_encode_chars} = $NonPrintableAscii;
-  # }
+  if( $args{html_encode_chars} && $args{html_encode_chars} eq '1' ){
+    $args{html_encode_chars} = $NonPrintableAscii;
+  }
 
   while( my ($attr, $val) = each %args ){
     # Provide a more descriptive message than "Can't locate object method".
