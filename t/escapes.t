@@ -34,11 +34,18 @@ escape_ok
 # Ensure that two pod "strings" still escape the < and & properly.
 # Use S<> since it counts as an event (and therefore creates two separate
 # "handle_text" calls) but does not produce boundary characters (the text
-# inside and around the S<> will have no characters in between in the markdown).
+# inside and around the S<> will have no characters between them).
 escape_ok
-  q{the <S<cmp>E<gt> operator and S<&>foobar;},
-  q{**the &lt;cmp> operator and &amp;foobar;**},
+  q{the <S<cmp>E<gt> operator and S<&>foobar; and eol &},
+  q{**the &lt;cmp> operator and &amp;foobar; and eol &**},
   '< and & are escaped properly even as separate pod strings',
-  verbatim => q{the <cmp> operator and &foobar;};
+  verbatim => q{the <cmp> operator and &foobar; and eol &};
+
+# Don't undo it for literal ones that happen to be at the end of strings.
+escape_ok
+  q{literal &amp; and &lt;},
+  q{**literal &amp;amp; and &amp;lt;**},
+  'literal entity from pod at end of string stays amp-escaped';
+
 
 done_testing;

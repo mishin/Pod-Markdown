@@ -460,11 +460,12 @@ sub _escape_inline_markdown {
     # Additionally we encode if the character ends the string as its possible
     # for another pod string to come after it and produce something that should
     # have been escaped (see t/escapes.t for example).
+    # Then we wrap them with markers so we know which ones to undo later.
     # {{{
       # Encode & if succeeded by chars that look like an html entity.
-      s/&(?=#?[xX]?(?:[0-9a-fA-F]+|\w+);|$)/&amp;/g;
+      s/&(?=#?[xX]?(?:[0-9a-fA-F]+|\w+);|$)/\0&amp;\0/g;
       # Encode < if succeeded by chars that look like an html tag.
-      s{<(?=[a-z/?\$!]|$)}{&lt;}gi;
+      s{<(?=[a-z/?\$!]|$)}{\0&lt;\0}gi;
     # }}}
   # }}}
 
@@ -478,6 +479,16 @@ sub _escape_inline_markdown {
 # at the start of a line.
 sub _escape_paragraph_markdown {
     local $_ = $_[1];
+
+    # Inline over-aggressively encodes these html chars at EOL.
+    # We can undo any that were unnecessary here.
+    #s/ &lt;  $/</xmg;
+    #s/ &amp; $/&/xmg;
+      s/\0&amp;\0(?!#?[xX]?(?:[0-9a-fA-F]+|\w+);)/&/g;
+      s{\0&lt;\0(?![a-z/?\$!])}{<}gi;
+
+    # Remove the markers for any entities that remain.
+    s{\0(&(?:amp|lt);)\0}{$1}g;
 
     # Escape headings, horizontal rules, (unordered) lists, and blockquotes.
     s/^([-+#>])/\\$1/mg;
