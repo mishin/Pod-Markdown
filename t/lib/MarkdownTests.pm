@@ -100,21 +100,39 @@ sub slurp_file {
 sub slurp_fh { my $fh = shift; local $/; <$fh>; }
 
 sub with_locale {
-  my ($locale, $sub) = @_;
+  my ($desc, $locales, $sub) = @_;
+  $locales = [ $locales ] unless ref $locales;
+
   local %ENV = %ENV;
   delete $ENV{$_}
     for ( qw( LANG LANGUAGE ), grep { /^LC_/ } keys %ENV );
-  $ENV{LC_ALL} = $locale;
-  $sub->($locale);
+
+  my $locale;
+  foreach my $loc ( @$locales ){
+    # Quiet the warnings;
+    #local $ENV{PERL_BADLANG} = 0;
+    # Is POSIX locale_h portable?
+    0 == system { $^X } $^X, '-MPOSIX=locale_h',
+      -e => 'setlocale(LC_ALL,shift) or exit 1', $loc
+        and $locale = $loc, last;
+  }
+
+  SKIP: {
+    skip "Cannot find locale for '$desc'", 1
+      unless $locale;
+
+    $ENV{LC_ALL} = $locale;
+    $sub->($locale);
+  }
 }
 
 sub with_utf8_locale {
-  with_locale('en_US.UTF-8' => @_);
+  with_locale(utf8 => 'en_US.UTF-8' => @_);
 }
 
 sub with_latin1_locale {
   # Is there a more reliable way to set a latin1 locale?
-  with_locale('en_US' => @_);
+  with_locale(latin1 => [qw( en_US.ISO8859-1 en_US )], @_);
 }
 
 # Similar interface to Test::Fatal;
